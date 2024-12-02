@@ -1,99 +1,84 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 import numpy as np
-import pandas as pd
-import os
-from tensorflow.keras.models import load_model
-from src.preprocessing import preprocess_data
-from src.model import train_model
+import joblib
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Initialize the FastAPI app
 app = FastAPI()
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # You can specify allowed origins like ["http://localhost:8000"]
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
-# Define global variables
-MODEL_PATH = "./optimized_model.h5"
-UPLOAD_FOLDER = "data/uploaded_data/"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Path to the saved model
+MODEL_PATH = "models/best_model.pkl"
 
-# Load the existing model
-model = load_model(MODEL_PATH)
+# Load the trained model
+try:
+    model = joblib.load(MODEL_PATH)
+except Exception as e:
+    raise RuntimeError(f"Failed to load the model: {str(e)}")
+
+# Define Pydantic model for input validation
+class DiabetesFeatures(BaseModel):
+    Pregnancies: int = Field(..., ge=0, description="Number of pregnancies")
+    Glucose: float = Field(..., ge=0, description="Plasma glucose concentration")
+    BloodPressure: float = Field(..., ge=0, description="Diastolic blood pressure (mm Hg)")
+    SkinThickness: float = Field(..., ge=0, description="Triceps skin fold thickness (mm)")
+    Insulin: float = Field(..., ge=0, description="2-hour serum insulin (mu U/ml)")
+    BMI: float = Field(..., ge=0, description="Body mass index (kg/m^2)")
+    DiabetesPedigreeFunction: float = Field(..., ge=0, description="Diabetes pedigree function")
+    Age: int = Field(..., ge=0, description="Age in years")
 
 @app.post("/predict/")
-async def predict(features: list[float]):
+async def predict(data: DiabetesFeatures):
     """
-    Predict using the existing model given a list of feature values.
-
+    Predict the outcome (diabetes or not) based on clinical features.
+    
     Parameters:
-        features (list): A list of feature values.
-
+        data (DiabetesFeatures): Input features validated by Pydantic.
+    
     Returns:
-        dict: Prediction result.
+        dict: Predicted outcome and probability.
     """
     try:
-        # Convert features to numpy array and reshape for model
-        input_data = np.array(features).reshape(1, len(features), 1)
+        # Convert the input data to a NumPy array
+        input_features = np.array([
+            [
+                data.Pregnancies,
+                data.Glucose,
+                data.BloodPressure,
+                data.SkinThickness,
+                data.Insulin,
+                data.BMI,
+                data.DiabetesPedigreeFunction,
+                data.Age,
+            ]
+        ])
         
         # Make prediction
-        prediction = model.predict(input_data)
-        predicted_class = int(np.round(prediction[0][0]))  # Round to 0 or 1
+        prediction = model.predict(input_features)
+        probability = model.predict_proba(input_features)[:, 1]  # Probability for class 1
 
-        return JSONResponse(content={
-            "prediction": predicted_class,
-            "probability": float(prediction[0][0])
-        })
-
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
-
-@app.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):
-    """
-    Upload a new dataset for retraining the model.
-
-    Parameters:
-        file (UploadFile): The uploaded file.
-
-    Returns:
-        dict: Acknowledgment of file upload.
-    """
-    try:
-        # Save uploaded file
-        file_location = os.path.join(UPLOAD_FOLDER, file.filename)
-        with open(file_location, "wb") as f:
-            f.write(file.file.read())
-
-        return {"message": f"File '{file.filename}' uploaded successfully!"}
+        # Prepare the response
+        response = {
+            "prediction": int(prediction[0]),
+            "probability": float(probability[0]),
+        }
+        return JSONResponse(content=response)
 
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
-@app.post("/retrain/")
-async def retrain_model(file_name: str = Form(...)):
-    """
-    Retrain the model using the uploaded dataset.
+# Example Endpoint to Check API Status
+@app.get("/")
+async def read_root():
+    return {"message": "API is up and running!"}
 
-    Parameters:
-        file_name (str): Name of the uploaded file.
-
-    Returns:
-        dict: Retraining results.
-    """
-    try:
-        # Load the uploaded dataset
-        file_path = os.path.join(UPLOAD_FOLDER, file_name)
-        if not os.path.exists(file_path):
-            return JSONResponse(content={"error": f"File '{file_name}' not found."}, status_code=404)
-
-        # Preprocess the data
-        X_train, X_test, y_train, y_test = preprocess_data(file_path)
-
-        # Retrain the model
-        _, retrained_model = train_model(X_train, y_train, X_test, y_test)
-
-        # Save the new model
-        retrained_model.save(MODEL_PATH)
-
-        return {"message": f"Model retrained successfully with '{file_name}'!"}
-
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)

@@ -108,7 +108,7 @@ The API is deployed live using Render for public access.
 ### Option 2: Dockerized Application  
 **Build and run the Docker image locally:**  
 ```bash
-docker build -t diabetes-prediction-app .
+docker build -t diabetes-prediction-app
 docker run -p 8000:8000 diabetes-prediction-app
 ```
 
@@ -117,8 +117,10 @@ docker run -p 8000:8000 diabetes-prediction-app
 ## 📊 Visualizations  
 
 Interpretations of the dataset features were created to provide insights:  
-1. ![image 1](<feature selection.png>) Glucose level, BMI, and Age are strong predictors of diabetes.  
-2. ![image 2](<correlation matrix-1.png>) Highlights relationships between features.  
+1.    ![feature selection](https://github.com/user-attachments/assets/a83a0cc7-5a63-4339-b384-d4cded2843ed)
+Glucose level, BMI, and Age are strong predictors of diabetes.
+2.  
+3. ![image 2](<correlation matrix-1.png>) Highlights relationships between features.  
  
 
 ---

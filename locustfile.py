@@ -18,12 +18,18 @@ class DiabetesPredictionUser(HttpUser):
             "DiabetesPedigreeFunction": random.uniform(0.1, 2.5),
             "Age": random.randint(20, 80),
         }
-        with self.client.post("/predict/", json=payload, catch_response=True) as response:
+        with self.client.post("/predict", json=payload, catch_response=True, timeout=10) as response:
             if response.status_code == 200:
                 response.success()
             else:
                 response.failure(f"Failed with status code {response.status_code}")
+            print(f"Payload: {payload}")
+            print(f"Response: {response.status_code} - {response.text}")
 
     @task
     def check_api_status(self):
-        self.client.get("/", name="Check API Status")
+        with self.client.get("/", name="Check API Status", catch_response=True) as response:
+            if response.status_code == 200:
+                response.success()
+            else:
+                response.failure("API status check failed!")

@@ -74,7 +74,7 @@ Results demonstrate the application’s ability to handle high-traffic scenarios
 
 ---
 
-## 📁 Notebook  
+##  Notebook [Notebook](../../Downloads/Diabetes_Prediction_MLp_Summative.ipynb) 
 
 The Jupyter Notebook includes all preprocessing, model training, and evaluation steps.  
 
@@ -94,9 +94,11 @@ To use the model:
 import joblib
 model = joblib.load('models/best_model.pkl')
 prediction = model.predict(new_data)
+
 ```
 
 ---
+# [bestmodels.pkl] (Users\HP\Downloads\best_model.pkl)
 
 ## 📦 Deployment Package  
 
@@ -115,9 +117,9 @@ docker run -p 8000:8000 diabetes-prediction-app
 ## 📊 Visualizations  
 
 Interpretations of the dataset features were created to provide insights:  
-1. **Feature Importance:** Glucose level, BMI, and Age are strong predictors of diabetes.  
-2. **Correlation Heatmap:** Highlights relationships between features.  
-3. **Age Distribution:** Visualizes how age influences diabetes likelihood.  
+1. ![image 1](<feature selection.png>) Glucose level, BMI, and Age are strong predictors of diabetes.  
+2. ![image 2](<correlation matrix-1.png>) Highlights relationships between features.  
+ 
 
 ---
 
